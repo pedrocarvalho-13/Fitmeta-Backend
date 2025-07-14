@@ -1,13 +1,15 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>07f2314a-61ab-42a8-90ca-6cc921bc0e51</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.7" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.6">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -15,6 +17,7 @@
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.1" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.12.1" />
   </ItemGroup>
 
 </Project>

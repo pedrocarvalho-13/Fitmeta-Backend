@@ -2,6 +2,9 @@ using Fitmeta_API.Data;
 using Fitmeta_API.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models; // Adicionado para o uso de OpenApi/Swagger, se necessário
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +28,22 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Registro dos serviços customizados
 builder.Services.AddScoped<IUsuarioService, UsuarioService>(); // AddScoped significa que uma nova instância é criada por requisição
 
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+            ValidAudience = builder.Configuration["JwtSettings:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]))
+        };
+    });
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -45,6 +64,8 @@ app.UseRouting(); // Importante para que o roteamento funcione corretamente
 
 // Middleware de Autorização (ESSENCIAL para regras de segurança nos controladores)
 app.UseAuthorization(); // LINHA 37 (agora na posição correta)
+
+app.UseAuthentication();
 
 // Middleware para mapear os controladores (ESSENCIAL para que AuthController funcione)
 app.MapControllers();   // LINHA 38 (agora na posição correta)
