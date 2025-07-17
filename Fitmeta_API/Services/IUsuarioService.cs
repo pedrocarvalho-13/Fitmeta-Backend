@@ -11,5 +11,7 @@ namespace Fitmeta_API.Services
     {
         Task<Usuario?> RegistrarUsuarioAsync(RegistrarUsuarioRequest request);
         Task<bool> EmailJaExisteAsync(string email);
+        Task<string?> LoginAsync(LoginRequest request);
+
     }
 }

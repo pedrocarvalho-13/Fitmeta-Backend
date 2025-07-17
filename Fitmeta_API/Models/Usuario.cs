@@ -29,6 +29,7 @@ namespace Fitmeta_API.Models // <--- Confirme este namespace
         [StringLength(255)]
         public string Email { get; set; }
 
+        // Adicione estas DUAS NOVAS PROPRIEDADES:
         [Required]
         public string SenhaHash { get; set; }
 

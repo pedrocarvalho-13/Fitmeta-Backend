@@ -1,13 +1,14 @@
 // Fitmeta_API/Controllers/AuthController.cs
 using Microsoft.AspNetCore.Mvc;
-using Fitmeta_API.DTOs;
+using Fitmeta_API.DTOs; // Esta é a que você precisa para o seu LoginRequest e RegistrarUsuarioRequest
 using Fitmeta_API.Services;
 using System.Threading.Tasks;
+// REMOVA -> using Microsoft.AspNetCore.Identity.Data; // <--- ESTA É A LINHA PROBLEMA!
 
 namespace Fitmeta_API.Controllers
 {
-    [ApiController] // Indica que esta classe é um controlador de API
-    [Route("api/[controller]")] // Define a rota base como /api/Auth
+    [ApiController]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
         private readonly IUsuarioService _usuarioService;
@@ -17,16 +18,14 @@ namespace Fitmeta_API.Controllers
             _usuarioService = usuarioService;
         }
 
-        [HttpPost("register")] // Define a rota para este método como /api/Auth/register
+        [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegistrarUsuarioRequest request)
         {
-            // Validação automática de modelo via DataAnnotations no DTO
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState); // Retorna erros de validação
+                return BadRequest(ModelState);
             }
 
-            // Verifica se as senhas coincidem (validação já no DTO, mas um duplo check nunca é demais)
             if (request.Senha != request.ConfirmarSenha)
             {
                 ModelState.AddModelError("ConfirmarSenha", "A senha e a confirmação de senha não coincidem.");
@@ -37,19 +36,30 @@ namespace Fitmeta_API.Controllers
 
             if (novoUsuario == null)
             {
-                // Se o usuário for null, significa que o e-mail já existe
                 ModelState.AddModelError("Email", "Este e-mail já está cadastrado.");
-                return Conflict(ModelState); // HTTP 409 Conflict
+                return Conflict(ModelState);
             }
 
-            // Retorna um status 201 Created com a URL para o novo recurso
-            // e o objeto do novo usuário (pode ser um DTO simplificado, por enquanto o próprio Usuario)
-            return CreatedAtAction(nameof(Register), new { id = novoUsuario.Id }, new {
+            return CreatedAtAction(nameof(Register), new { id = novoUsuario.Id }, new
+            {
                 novoUsuario.Id,
                 novoUsuario.Nome,
                 novoUsuario.Email,
                 novoUsuario.TipoUsuario
             });
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult<string>> Login(LoginRequest request) // Agora o compilador saberá que é o seu LoginRequest
+        {
+            var token = await _usuarioService.LoginAsync(request);
+
+            if (token == null)
+            {
+                return Unauthorized("Credenciais inválidas.");
+            }
+
+            return Ok(token);
         }
     }
 }
