@@ -13,5 +13,7 @@ namespace Fitmeta_API.Services
         Task<bool> EmailJaExisteAsync(string email);
         Task<string?> LoginAsync(LoginRequest request);
 
+        Task<string?> GeneratePasswordResetTokenAsync(string email);
+
     }
 }

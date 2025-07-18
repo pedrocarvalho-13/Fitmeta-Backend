@@ -127,7 +127,27 @@ namespace Fitmeta_API.Services
             return tokenHandler.WriteToken(token);
         }
 
+        public async Task<string?> GeneratePasswordResetTokenAsync(string email)
+        {
+            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
 
+
+            if (usuario == null)
+            {
+                // Retorna null para evitar enumeração de usuarios
+                return null;
+            }
+
+            var token = Guid.NewGuid().ToString();
+
+            usuario.ResetPassword = token;
+            usuario.ResetTokenExpires = DateTime.UtcNow.AddHours(1);
+
+            _context.Usuarios.Update(usuario);
+            await _context.SaveChangesAsync();
+
+            return token;
+        }
 
     }
 }

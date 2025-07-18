@@ -61,5 +61,32 @@ namespace Fitmeta_API.Controllers
 
             return Ok(token);
         }
+
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var token = await _usuarioService.GeneratePasswordResetTokenAsync(request.Email);
+
+            // Por segurança, sempre retornamos 200 OK, mesmo que o e-mail não exista.
+            // Isso evita que um atacante descubra quais e-mails estão cadastrados.
+            if (token == null)
+            {
+                return Ok(new { Message = "Se o e-mail estiver cadastrado, um link de redefinição de senha será enviado." });
+            }
+
+            // *** AQUI VOCÊ INTEGRARIA O SERVIÇO DE ENVIO DE E-MAIL ***
+            // Por enquanto, vamos apenas logar o token ou retornar para fins de teste.
+            Console.WriteLine($"Token de redefinição para {request.Email}: {token}");
+            // Em um ambiente de produção, você enviaria este token por e-mail para o usuário.
+            // Ex: _emailService.SendPasswordResetEmail(request.Email, token);
+
+            return Ok(new { Message = "Se o e-mail estiver cadastrado, um link de redefinição de senha será enviado." });
+        }
     }
 }

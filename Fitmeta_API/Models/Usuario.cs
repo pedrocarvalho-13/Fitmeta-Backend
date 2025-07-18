@@ -41,5 +41,8 @@ namespace Fitmeta_API.Models // <--- Confirme este namespace
         public TipoUsuario TipoUsuario { get; set; }
 
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
+
+        public string? ResetPassword { get; set; }
+        public DateTime? ResetTokenExpires { get; set; }
     }
 }
