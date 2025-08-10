@@ -44,6 +44,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddScoped<IEmailService, EmailService>(); // Adicione esta linha
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

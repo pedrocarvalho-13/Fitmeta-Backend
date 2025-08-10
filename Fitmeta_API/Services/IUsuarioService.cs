@@ -15,5 +15,8 @@ namespace Fitmeta_API.Services
 
         Task<string?> GeneratePasswordResetTokenAsync(string email);
 
+        Task<bool> ResetPasswordAsync(ResetPasswordRequest request);
+
+
     }
 }

@@ -88,5 +88,26 @@ namespace Fitmeta_API.Controllers
 
             return Ok(new { Message = "Se o e-mail estiver cadastrado, um link de redefinição de senha será enviado." });
         }
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var success = await _usuarioService.ResetPasswordAsync(request);
+
+            if (success)
+            {
+                return Ok(new { Message = "Sua senha foi redefinida com sucesso. Você já pode fazer login com a nova senha." });
+            }
+            else
+            {
+                // Por segurança, uma mensagem genérica para não dar dicas a atacantes
+                return BadRequest(new { Message = "Não foi possível redefinir a senha. O token pode ser inválido ou expirado." });
+            }
+        }
     }
+
 }

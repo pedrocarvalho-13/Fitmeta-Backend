@@ -17,11 +17,16 @@ namespace Fitmeta_API.Services
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly IEmailService _emailService;
+        private readonly ILogger<UsuarioService> _logger; // Opcional, para logar
 
-        public UsuarioService(AppDbContext context, IConfiguration configuration)
+
+        public UsuarioService(AppDbContext context, IConfiguration configuration, IEmailService emailService, ILogger<UsuarioService> logger)
         {
             _context = context;
             _configuration = configuration;
+            _emailService = emailService;
+            _logger = logger; // Opcional
         }
 
         public async Task<Usuario?> RegistrarUsuarioAsync(RegistrarUsuarioRequest request)
@@ -135,19 +140,85 @@ namespace Fitmeta_API.Services
             if (usuario == null)
             {
                 // Retorna null para evitar enumeração de usuarios
+                _logger.LogWarning($"Tentativa de redefinição de senha para e-mail não existente: {email}");
                 return null;
             }
 
             var token = Guid.NewGuid().ToString();
 
-            usuario.ResetPassword = token;
+            usuario.ResetPasswordToken = token;
             usuario.ResetTokenExpires = DateTime.UtcNow.AddHours(1);
 
             _context.Usuarios.Update(usuario);
             await _context.SaveChangesAsync();
 
+            // --- AQUI É ONDE O E-MAIL REAL SERÁ ENVIADO AGORA ---
+            string frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:3000"; // Configurar URL do frontend
+            string resetLink = $"{frontendBaseUrl}/reset-password?token={token}&email={Uri.EscapeDataString(usuario.Email)}";
+
+            var emailRequest = new EmailRequest
+            {
+                ToEmail = usuario.Email,
+                Subject = "Redefinição de Senha Fitmeta",
+                Body = $"Olá {usuario.Nome},\n\nRecebemos uma solicitação de redefinição de senha para sua conta. Por favor, clique no link abaixo para redefinir sua senha:\n\n{resetLink}\n\nEste link expirará em 1 hora.\n\nSe você não solicitou isso, por favor, ignore este e-mail."
+            };
+
+            var emailSent = await _emailService.SendEmailAsync(emailRequest);
+
+            if (!emailSent)
+            {
+                _logger.LogError($"Falha ao enviar e-mail de redefinição para {usuario.Email}");
+                // Você pode escolher o que fazer aqui: retornar null, lançar exceção, etc.
+                // Por enquanto, vamos manter o retorno do token para que o fluxo não quebre.
+                return null; // ou lançar uma exceção se a falha no email for crítica
+            }
+
+            // Remova esta linha, pois o e-mail será enviado de verdade
+            // Console.WriteLine($"Token de redefinição para {request.Email}: {token}");
+
             return token;
         }
 
+
+        public async Task<bool> ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            var usuario = await _context.Usuarios
+                .FirstOrDefaultAsync(u => u.Email == request.Email);
+
+            // 1. Verificar se o usuário existe
+            if (usuario == null)
+            {
+                return false; // Por segurança, falha silenciosamente
+            }
+
+            // 2. Verificar se o token existe e corresponde
+            if (string.IsNullOrEmpty(usuario.ResetPasswordToken) || usuario.ResetPasswordToken != request.Token)
+            {
+                return false; // Token inválido ou não corresponde
+            }
+
+            // 3. Verificar se o token expirou
+            if (usuario.ResetTokenExpires < DateTime.UtcNow)
+            {
+                // O token expirou, também invalidamos para futuros usos
+                usuario.ResetPasswordToken = null;
+                usuario.ResetTokenExpires = null;
+                _context.Usuarios.Update(usuario);
+                await _context.SaveChangesAsync();
+                return false;
+            }
+
+            // 4. Se tudo validou, redefinir a senha
+            usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+            // 5. Invalide o token após o uso (limpe os campos)
+            usuario.ResetPasswordToken = null;
+            usuario.ResetTokenExpires = null;
+
+            _context.Usuarios.Update(usuario);
+            await _context.SaveChangesAsync();
+
+            return true; // Senha redefinida com sucesso
+        }
     }
 }
