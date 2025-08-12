@@ -1,33 +1,67 @@
 using Fitmeta_API.Data;
 using Fitmeta_API.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models; // Adicionado para o uso de OpenApi/Swagger, se necessário
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers(); // ESSENCIAL para que seus controladores (como AuthController) funcionem
-builder.Services.AddEndpointsApiExplorer();
+// Adiciona os serviços do controlador
+builder.Services.AddControllers();
 
-// Configurações do Swagger/OpenAPI
-// Se você está usando AddControllers, o AddSwaggerGen é o mais comum.
-// O AddOpenApi() é mais comum para Minimal APIs, mas pode coexistir se necessário.
+// Adiciona os serviços do Swagger/OpenAPI e configura para JWT
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Fitmeta API", Version = "v1" });
+
+    // Configuração para exibir o botão de autorização JWT no Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
 });
-builder.Services.AddOpenApi(); // Mantenha se quiser a funcionalidade OpenApi separada
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("CorsPolicy",
+        builder => builder
+            // --- ALTERADO AQUI ---
+            .AllowAnyOrigin() // Permite qualquer origem
+            .AllowAnyMethod()
+            .AllowAnyHeader());
+});
 
 // Adiciona o AppDbContext e configura para usar PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Registro dos serviços customizados
-builder.Services.AddScoped<IUsuarioService, UsuarioService>(); // AddScoped significa que uma nova instância é criada por requisição
+builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
+// --- A VERSÃO CORRETA DA CONFIGURAÇÃO DO JWT É ESTA! ---
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -44,65 +78,108 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddScoped<IEmailService, EmailService>(); // Adicione esta linha
-
+// Adiciona o serviço de autorização
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configura o pipeline de requisição HTTP
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fitmeta API v1");
-        c.RoutePrefix = "swagger"; // Define que a UI do Swagger estará em /swagger
-    });
+    app.UseSwaggerUI();
 }
 
-// app.UseHttpsRedirection(); // Mantido comentado conforme sua preferência atual
+app.UseHttpsRedirection();
 
-// Middleware de roteamento
-app.UseRouting(); // Importante para que o roteamento funcione corretamente
-
-// Middleware de Autorização (ESSENCIAL para regras de segurança nos controladores)
-app.UseAuthorization(); // LINHA 37 (agora na posição correta)
-
-app.UseAuthentication();
-
-// Middleware para mapear os controladores (ESSENCIAL para que AuthController funcione)
-app.MapControllers();   // LINHA 38 (agora na posição correta)
-
-
-// Configuração do OpenAPI se você estiver usando MapOpenApi
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi(); // Mantenha se quiser a funcionalidade OpenApi separada
-}
-
-// Seu endpoint WeatherForecast de exemplo (pode ser removido depois)
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+// --- A ORDEM FOI AJUSTADA E UMA LINHA FOI ADICIONADA ---
+app.UseRouting(); // Identifica para qual rota a requisição deve ir
+app.UseCors("CorsPolicy"); // <-- LINHA ADICIONADA: Aplica a política de CORS
+app.UseAuthentication(); // Lê o token JWT do cabeçalho
+app.UseAuthorization(); // Verifica se o usuário autenticado pode acessar a rota
+app.MapControllers(); // Executa o controlador correto
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+// using Fitmeta_API.Data;
+// using Fitmeta_API.Services;
+// using Microsoft.EntityFrameworkCore;
+// using Microsoft.OpenApi.Models; // Adicionado para o uso de OpenApi/Swagger, se necessário
+// using Microsoft.AspNetCore.Authentication.JwtBearer;
+// using Microsoft.IdentityModel.Tokens;
+// using System.Text;
+
+// var builder = WebApplication.CreateBuilder(args);
+
+// builder.Services.AddControllers();
+// builder.Services.AddEndpointsApiExplorer();
+
+// builder.Services.AddSwaggerGen(c =>
+// {
+//     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Fitmeta API", Version = "v1" });
+// });
+// builder.Services.AddOpenApi();
+
+
+// builder.Services.AddDbContext<AppDbContext>(options =>
+//     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// // Registro dos serviços customizados
+// builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+
+// builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//     .AddJwtBearer(options =>
+//     {
+//         options.TokenValidationParameters = new TokenValidationParameters
+//         {
+//             ValidateIssuer = true,
+//             ValidateAudience = true,
+//             ValidateLifetime = true,
+//             ValidateIssuerSigningKey = true,
+
+//             ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+//             ValidAudience = builder.Configuration["JwtSettings:Audience"],
+//             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]))
+//         };
+//     });
+
+// builder.Services.AddScoped<IEmailService, EmailService>();
+
+// builder.Services.AddAuthorization();
+
+// builder.Services.AddControllers();
+// builder.Services.AddEndpointsApiExplorer();
+// builder.Services.AddSwaggerGen();
+
+// var app = builder.Build();
+
+// if (app.Environment.IsDevelopment())
+// {
+//     app.UseSwagger();
+//     app.UseSwaggerUI(c =>
+//     {
+//         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fitmeta API v1");
+//         c.RoutePrefix = "swagger";
+//     });
+// }
+
+// app.UseRouting();
+
+// app.UseAuthorization(); 
+
+// app.UseAuthentication();
+
+// app.MapControllers();
+
+
+// if (app.Environment.IsDevelopment())
+// {
+//     app.MapOpenApi(); // Mantenha se quiser a funcionalidade OpenApi separada
+// }
+
+// app.Run();
+
+// // record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+// // {
+// //     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+// // }

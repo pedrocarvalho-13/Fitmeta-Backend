@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Fitmeta_API.DTOs; // Esta é a que você precisa para o seu LoginRequest e RegistrarUsuarioRequest
 using Fitmeta_API.Services;
 using System.Threading.Tasks;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 // REMOVA -> using Microsoft.AspNetCore.Identity.Data; // <--- ESTA É A LINHA PROBLEMA!
 
 namespace Fitmeta_API.Controllers
@@ -108,6 +110,24 @@ namespace Fitmeta_API.Controllers
                 return BadRequest(new { Message = "Não foi possível redefinir a senha. O token pode ser inválido ou expirado." });
             }
         }
+
+        [HttpGet("profile")]
+        [Authorize]
+        public IActionResult GetUserProfile()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userEmail = User.FindFirstValue(ClaimTypes.Email);
+
+            var userProfile = new
+            {
+                Id = userId,
+                Email = userEmail,
+                Menssage = "Este é um endpoint protegido, e voce conseguiu acessá-lo com sucesso!"
+            };
+
+            return Ok(userProfile);
+        }
+
     }
 
 }
